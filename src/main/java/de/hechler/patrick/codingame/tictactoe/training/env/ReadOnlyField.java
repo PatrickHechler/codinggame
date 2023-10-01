@@ -1,4 +1,4 @@
-package de.hechler.patrick.codingame.tictactoe.training;
+package de.hechler.patrick.codingame.tictactoe.training.env;
 
 
 @SuppressWarnings("javadoc")

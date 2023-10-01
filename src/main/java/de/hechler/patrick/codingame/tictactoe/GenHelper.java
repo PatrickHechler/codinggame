@@ -314,11 +314,9 @@ class IgnoreCloseIn extends InputStream {
 	public int available() throws IOException { return this.in.available(); }
 	
 	@Override
-	@SuppressWarnings("sync-override")
 	public void mark(int readlimit) { this.in.mark(readlimit); }
 	
 	@Override
-	@SuppressWarnings("sync-override")
 	public void reset() throws IOException { this.in.reset(); }
 	
 	@Override

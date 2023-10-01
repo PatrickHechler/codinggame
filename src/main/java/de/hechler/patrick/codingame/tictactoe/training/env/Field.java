@@ -1,4 +1,4 @@
-package de.hechler.patrick.codingame.tictactoe.training;
+package de.hechler.patrick.codingame.tictactoe.training.env;
 
 
 @SuppressWarnings("javadoc")
@@ -22,7 +22,7 @@ public class Field implements TTTField {
 			}
 		}
 	}
-
+	
 	@Override
 	public Object value(int x, int y) {
 		return this.fields[x * 3 + y];
@@ -32,7 +32,7 @@ public class Field implements TTTField {
 	public int[] subField(int x, int y) {
 		Object val = this.fields[x * 3 + y];
 		if (val instanceof int[] a) return a;
-		return null; //NOSONAR
+		return null; // NOSONAR
 	}
 	
 	@Override
@@ -44,16 +44,18 @@ public class Field implements TTTField {
 	
 	@Override
 	public int place(TTTPos pos, int val) {
-		if (pos.innerX < 0 || pos.innerX > 3
-				|| pos.innerY < 0 || pos.innerY > 3
-				|| pos.outerX < 0 || pos.outerX > 3
-				|| pos.outerY < 0 || pos.outerY > 3) {
-			throw new IllegalArgumentException();
+		if (pos.innerX < 0 || pos.innerX >= 3 || pos.innerY < 0 || pos.innerY >= 3 || pos.outerX < 0 || pos.outerX >= 3 || pos.outerY < 0 || pos.outerY >= 3) {
+			throw new IndexOutOfBoundsException("invalid position: " + pos + " (min: 0, max: 2)");
 		}
-		int[] arr = (int[]) this.fields[pos.outerX * 3 + pos.outerY];
-		arr[pos.innerX * 3 + pos.innerY] = val;
+		int   oi  = pos.outerX * 3 + pos.outerY;
+		int[] arr = (int[]) this.fields[oi];
+		int   ii  = pos.innerX * 3 + pos.innerY;
+		if (arr[ii] != 0) {
+			throw new IllegalStateException("place already filled");
+		}
+		arr[ii] = val;
 		if (TTTField.checkWon((a, x, y) -> a[x * 3 + y], arr, pos.innerX, pos.innerY)) {
-			this.fields[pos.outerX * 3 + pos.outerY] = Integer.valueOf(val);
+			this.fields[oi] = Integer.valueOf(val);
 			if (TTTField.checkWon((a, x, y) -> a.fields[x * 3 + y] instanceof Integer ival ? ival.intValue() : 0, this, pos.innerX, pos.innerY)) {
 				return val;
 			}
@@ -65,7 +67,7 @@ public class Field implements TTTField {
 		for (int i = 0; i < 9; i++) {
 			if (arr[i] == 0) return 0;
 		}
-		this.fields[pos.outerX * 3 + pos.outerY] = Integer.valueOf(0);
+		this.fields[oi] = Integer.valueOf(0);
 		return 0;
 	}
 	

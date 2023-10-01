@@ -1,5 +1,6 @@
-package de.hechler.patrick.codingame.tictactoe.training;
+package de.hechler.patrick.codingame.tictactoe.training.env;
 
+import de.hechler.patrick.codingame.tictactoe.training.env.Player.InitilizedPlayer;
 
 @SuppressWarnings("javadoc")
 public class Game {
@@ -9,7 +10,7 @@ public class Game {
 	private final Player   playerb;
 	
 	public Game(Player playera, Player playerb) {
-		this.field  = new Field();
+		this.field   = new Field();
 		this.playera = playera;
 		this.playerb = playerb;
 	}
@@ -22,15 +23,18 @@ public class Game {
 		return this.playerb;
 	}
 	
+	private static final boolean TRUST_PLAYERS = true;
+	private static final boolean SHOW_TRACE    = false;
+	
 	public int runGame() {
-		this.playera.initGame(this.field.readOnly());
-		this.playerb.initGame(this.field.reverse().readOnly());
-		int x = -1;
-		int y = -1;
-		TTTPos prev = null;
+		InitilizedPlayer a    = this.playera.initGame(TRUST_PLAYERS ? this.field : this.field.readOnly());
+		InitilizedPlayer b    = this.playerb.initGame(TRUST_PLAYERS ? this.field.reverse() : this.field.reverse().readOnly());
+		int              x    = -1;
+		int              y    = -1;
+		TTTPos           prev = null;
 		while (true) {
 			try {
-				prev = this.playera.doTurn(x, y, prev);
+				prev = a.doTurn(x, y, prev);
 				if (x != -1 && prev.outerX != x || prev.outerY != y) {
 					return -2;
 				}
@@ -46,11 +50,13 @@ public class Game {
 					y = -1;
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				if (SHOW_TRACE) {
+					e.printStackTrace();
+				}
 				return -2;
 			}
 			try {
-				prev = this.playerb.doTurn(x, y, prev);
+				prev = b.doTurn(x, y, prev);
 				if (x != -1 && prev.outerX != x || prev.outerY != y) {
 					return 2;
 				}
@@ -66,7 +72,9 @@ public class Game {
 					y = -1;
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
+				if (SHOW_TRACE) {
+					e.printStackTrace();
+				}
 				return 2;
 			}
 		}
