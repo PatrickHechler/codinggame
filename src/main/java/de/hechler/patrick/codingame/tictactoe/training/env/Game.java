@@ -35,13 +35,13 @@ public class Game {
 		while (true) {
 			try {
 				prev = a.doTurn(x, y, prev);
-				if (x != -1 && prev.outerX != x || prev.outerY != y) {
-					return -2;
+				if (x != -1 && (prev.outerX != x || prev.outerY != y)) {
+					return fin(a, b, -2);
 				}
 				int res = this.field.place(prev, 1);
 				if (res != 0) {
-					if (res < 0) return 0;
-					return 1;
+					if (res < 0) return fin(a, b, 0);
+					return fin(a, b, 1);
 				}
 				x = prev.innerX;
 				y = prev.innerY;
@@ -53,17 +53,17 @@ public class Game {
 				if (SHOW_TRACE) {
 					e.printStackTrace();
 				}
-				return -2;
+				return fin(a, b, -2);
 			}
 			try {
 				prev = b.doTurn(x, y, prev);
-				if (x != -1 && prev.outerX != x || prev.outerY != y) {
-					return 2;
+				if (x != -1 && (prev.outerX != x || prev.outerY != y)) {
+					return fin(a, b, 2);
 				}
-				int res = this.field.place(prev, 1);
+				int res = this.field.place(prev, -1);
 				if (res != 0) {
-					if (res < 0) return 0;
-					return -1;
+					if (res < 0) return fin(a, b, 0);
+					return fin(a, b, -1);
 				}
 				x = prev.innerX;
 				y = prev.innerY;
@@ -75,9 +75,15 @@ public class Game {
 				if (SHOW_TRACE) {
 					e.printStackTrace();
 				}
-				return 2;
+				return fin(a, b, 2);
 			}
 		}
+	}
+	
+	private static int fin(InitilizedPlayer a, InitilizedPlayer b, int res) {
+		a.finish(res);
+		b.finish(-res);
+		return res;
 	}
 	
 }

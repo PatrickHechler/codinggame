@@ -8,12 +8,12 @@ import java.util.stream.Stream;
 @SuppressWarnings("javadoc")
 public class Trainer {
 	
-	private static final double DEF_MAX_RND         = 0.025;
-	private static final double DEF_RND_PROPAB      = 0.0125;
-	private static final int    DEF_LAYER_SIZE      = 1 << 8;
+	private static final double DEF_MAX_RND         = 0.0125;
+	private static final double DEF_RND_PROPAB      = 0.025;
+	private static final int    DEF_LAYER_SIZE      = 1 << 6;
 	private static final int    DEF_LAYER_COUNT     = 1 << 6;
-	private static final int    DEF_AGENT_CNT       = 1 << 8;
-	private static final int    DEF_DIRECT_SURIVORS = 1 << 5;
+	private static final int    DEF_AGENT_CNT       = 1 << 7;
+	private static final int    DEF_DIRECT_SURIVORS = 1 << 4;
 	
 	private final Random rnd;
 	private final double maxRandom;
@@ -23,8 +23,8 @@ public class Trainer {
 	private final int    agentCount;
 	private final int    directSurivors;
 	
-	public Trainer() {
-		this(new Random(), DEF_MAX_RND, DEF_RND_PROPAB, DEF_LAYER_COUNT, DEF_LAYER_SIZE, DEF_AGENT_CNT, DEF_DIRECT_SURIVORS);
+	public Trainer(Random rnd) {
+		this(rnd, DEF_MAX_RND, DEF_RND_PROPAB, DEF_LAYER_COUNT, DEF_LAYER_SIZE, DEF_AGENT_CNT, DEF_DIRECT_SURIVORS);
 	}
 	
 	public Trainer(Random rnd, double maxRandom, double randPropablility, int layers, int layerSize, int agentCount, double directSurivors) {
@@ -56,10 +56,10 @@ public class Trainer {
 			nets[i] = new NeuralNet(this.rnd, inputCount, this.layers, this.layerSize, outputCount);
 		}
 		System.out.println("finished init, test/train now");
+		printMeminfo();
 		long start = System.currentTimeMillis();
-		long last = start;
+		long last  = start;
 		for (int g = 0; g < generations; g++) {
-			System.out.println("start testing generation " + g);
 			Stream.of(nets).parallel().forEach(a -> {
 				Stream.of(nets).forEach(b -> {
 					if (a == b) return;
@@ -70,20 +70,33 @@ public class Trainer {
 			});
 			Arrays.sort(nets, (a, b) -> Integer.compare(b.score, a.score));
 			Arrays.fill(nets, this.directSurivors, nets.length - this.directSurivors, null);
-			long time0 = System.currentTimeMillis();
 			fillRest(nets);
-			long time = System.currentTimeMillis();
-			System.out.println("It took " + (time - last) + " ms to test generation " + g + " the filling took " + (time - time0) + " ms");
-			last = time;
+			if ((g & 0x3F) == 0x3F) {
+				long time = System.currentTimeMillis();
+				System.out.println("It took " + (time - last) + " ms to test generations " + (g - 0x3F) + " .. " + g);
+				printMeminfo();
+				last = time;
+			}
 		}
 		System.out.println("It took " + (System.currentTimeMillis() - start) + " ms to test all generations");
+		printMeminfo();
 		return nets;
+	}
+	
+	private static final boolean PRINT_MEMINFO = false;
+	
+	private static void printMeminfo() {
+		if (PRINT_MEMINFO) {
+			System.out.println("  free mem:  " + Runtime.getRuntime().freeMemory());
+			System.out.println("  total mem: " + Runtime.getRuntime().totalMemory());
+			System.out.println("  max mem:   " + Runtime.getRuntime().maxMemory());
+		}
 	}
 	
 	private void fillRest(NeuralNet[] nets) {
 		for (int i = this.directSurivors; i < nets.length; i++) {
 			NeuralNet orig = nets[this.rnd.nextInt(i >> 1)];
-			nets[i] = new NeuralNet(this.rnd, orig, this.randPropablility, this.maxRandom);
+			nets[i] = new NeuralNet(orig, this.randPropablility, this.maxRandom);
 		}
 	}
 	

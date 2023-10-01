@@ -12,6 +12,8 @@ public interface Player {
 		
 		TTTPos doTurn(int outerX, int outerY, TTTPos lastEnemyTurn);
 		
+		default void finish(@SuppressWarnings("unused") int won) {/**/}
+	
 	}
 	
 }

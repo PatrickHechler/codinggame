@@ -1,6 +1,7 @@
 package de.hechler.patrick.codingame.tictactoe.training.trainer;
 
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import de.hechler.patrick.codingame.tictactoe.training.env.Player;
 import jdk.incubator.vector.DoubleVector;
@@ -15,7 +16,7 @@ public class NeuralNet {
 	
 	private static final int SPEC_LEN = SPECS.length();
 	
-	int score;
+	int    score;
 	Player p;
 	
 	int     inputCount;
@@ -31,17 +32,9 @@ public class NeuralNet {
 		this.values[this.values.length - 1] = initNs(rnd, layerSize, outputCount);
 	}
 	
-	public NeuralNet(Random rnd, NeuralNet orig, double randPropablility, double maxRandom) {
-		this.inputCount = orig.inputCount;
-		this.values     = new Nodes[orig.values.length];
-		for (int i = 0; i < this.values.length; i++) {
-			
-		}
-	}
-	
 	private static Nodes initNs(Random rnd, int inputSize, int layerSize) {
 		Nodes ns = new Nodes();
-		ns.inputMultiplicators = new double[inputSize][layerSize];
+		ns.inputMultiplicators = new double[layerSize][inputSize];
 		ns.importanceMinimum   = new double[layerSize];
 		ns.nodeMultiplicator   = new double[layerSize];
 		for (int ii = 0; ii < ns.inputMultiplicators.length; ii++) {
@@ -50,6 +43,35 @@ public class NeuralNet {
 		fillArr(rnd, ns.importanceMinimum);
 		fillArr(rnd, ns.nodeMultiplicator);
 		return ns;
+	}
+	
+	public NeuralNet(NeuralNet orig, double randPropablility, double maxRandom) {
+		this.inputCount = orig.inputCount;
+		this.values     = new Nodes[orig.values.length];
+		ThreadLocalRandom rnd = ThreadLocalRandom.current();
+		for (int i = 0; i < this.values.length; i++) {
+			this.values[i]                   = new Nodes();
+			this.values[i].importanceMinimum = orig.values[i].importanceMinimum.clone();
+			this.values[i].nodeMultiplicator = orig.values[i].nodeMultiplicator.clone();
+			for (int ii = 0; ii < this.values.length; ii++) {
+				this.values[i].importanceMinimum[ii] = random(rnd, randPropablility, maxRandom, this.values[i].importanceMinimum[ii]);
+				this.values[i].nodeMultiplicator[ii] = random(rnd, randPropablility, maxRandom, this.values[i].nodeMultiplicator[ii]);
+			}
+			this.values[i].inputMultiplicators = new double[orig.values[i].inputMultiplicators.length][];
+			for (int ii = 0; ii < this.values.length; ii++) {
+				this.values[i].inputMultiplicators[ii] = orig.values[i].inputMultiplicators[ii].clone();
+				for (int iii = 0; iii < this.values[i].inputMultiplicators[ii].length; iii++) {
+					this.values[i].inputMultiplicators[ii][iii] = random(rnd, randPropablility, maxRandom, this.values[i].inputMultiplicators[ii][iii]);
+				}
+			}
+		}
+	}
+	
+	private static double random(ThreadLocalRandom rnd, double randPropablility, double maxRandom, double value) {
+		if (rnd.nextDouble() >= randPropablility) {
+			return value;
+		}
+		return Math.min(0d, value + rnd.nextDouble(-maxRandom, maxRandom));
 	}
 	
 	private static void fillArr(Random rnd, double[] arr) {
@@ -63,19 +85,19 @@ public class NeuralNet {
 			throw new IllegalArgumentException();
 		}
 		double[] res      = null;
-		int      nodeRows = this.values.length;
-		for (int i = 0; i < nodeRows; i++) {
-			Nodes          n         = this.values[i];
-			final double[] nodeMuls  = n.nodeMultiplicator;
-			final int      nodecount = nodeMuls.length;
+		final Nodes[] layers = this.values;
+		final int      layerCount = layers.length;
+		for (int i = 0; i < layerCount; i++) {
+			Nodes     n         = layers[i];
+			final int nodecount = n.nodeMultiplicator.length;
 			res = new double[nodecount];
-			final double[][] inmuls   = n.inputMultiplicators;
-			int              curInOff = 0;
-			for (int ii = 0; ii < inmuls.length; ii++) { // fill result with first value
-				final double[] curInmul    = n.inputMultiplicators[ii];
-				final int      curInmulLen = curInmul.length;
+			final double[][] inmuls = n.inputMultiplicators;
+			for (int ii = 0; ii < nodecount; ii++) {
 				res[ii] = 0d;
-				for (int inBound = SPECS.loopBound(curInmulLen); curInOff < inBound; curInOff += SPEC_LEN) {
+				final double[] curInmul    = inmuls[ii];
+				final int      curInmulLen = curInmul.length;
+				int            curInOff    = 0;
+				for (final int inBound = SPECS.loopBound(curInmulLen); curInOff < inBound; curInOff += SPEC_LEN) {
 					DoubleVector ivec   = DoubleVector.fromArray(SPECS, input, curInOff);
 					DoubleVector mvec   = DoubleVector.fromArray(SPECS, curInmul, curInOff);
 					DoubleVector finvec = mvec.mul(ivec);
@@ -85,9 +107,10 @@ public class NeuralNet {
 					res[ii] += input[curInOff] * curInmul[curInOff];
 				}
 			}
+			final double[] nodeMuls  = n.nodeMultiplicator;
 			final double[] importMin = n.importanceMinimum;
 			int            resOff    = 0;
-			for (int resBound = SPECS.loopBound(nodecount); resOff < resBound; resOff += SPEC_LEN) {
+			for (final int resBound = SPECS.loopBound(nodecount); resOff < resBound; resOff += SPEC_LEN) {
 				DoubleVector       rvec   = DoubleVector.fromArray(SPECS, res, resOff);
 				DoubleVector       minvec = DoubleVector.fromArray(SPECS, importMin, resOff);
 				DoubleVector       mulvec = DoubleVector.fromArray(SPECS, nodeMuls, resOff);
