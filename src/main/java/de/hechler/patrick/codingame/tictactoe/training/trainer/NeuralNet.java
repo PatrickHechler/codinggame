@@ -1,23 +1,25 @@
 package de.hechler.patrick.codingame.tictactoe.training.trainer;
 
+import java.io.Serializable;
 import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
 
 import de.hechler.patrick.codingame.tictactoe.training.env.Player;
-import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 
 @SuppressWarnings("javadoc")
-public class NeuralNet {
+public class NeuralNet implements Serializable {
 	
-	private static final VectorSpecies<Double> SPECS = DoubleVector.SPECIES_PREFERRED;
+	private static final long serialVersionUID = -7516615694977050732L;
+	
+	private static final VectorSpecies<Float> SPECS = FloatVector.SPECIES_PREFERRED;
 	
 	private static final int SPEC_LEN = SPECS.length();
 	
-	int    score;
-	Player p;
+	transient int    score;
+	transient Player p;
 	
 	int     inputCount;
 	Nodes[] values;
@@ -34,9 +36,9 @@ public class NeuralNet {
 	
 	private static Nodes initNs(Random rnd, int inputSize, int layerSize) {
 		Nodes ns = new Nodes();
-		ns.inputMultiplicators = new double[layerSize][inputSize];
-		ns.importanceMinimum   = new double[layerSize];
-		ns.nodeMultiplicator   = new double[layerSize];
+		ns.inputMultiplicators = new float[layerSize][inputSize];
+		ns.importanceMinimum   = new float[layerSize];
+		ns.nodeMultiplicator   = new float[layerSize];
 		for (int ii = 0; ii < ns.inputMultiplicators.length; ii++) {
 			fillArr(rnd, ns.inputMultiplicators[ii]);
 		}
@@ -45,84 +47,98 @@ public class NeuralNet {
 		return ns;
 	}
 	
-	public NeuralNet(NeuralNet orig, double randPropablility, double maxRandom) {
+	public NeuralNet(Random rnd, NeuralNet orig, float randPropablility, float maxRandom) {
 		this.inputCount = orig.inputCount;
 		this.values     = new Nodes[orig.values.length];
-		ThreadLocalRandom rnd = ThreadLocalRandom.current();
 		for (int i = 0; i < this.values.length; i++) {
 			this.values[i]                   = new Nodes();
 			this.values[i].importanceMinimum = orig.values[i].importanceMinimum.clone();
 			this.values[i].nodeMultiplicator = orig.values[i].nodeMultiplicator.clone();
 			for (int ii = 0; ii < this.values.length; ii++) {
-				this.values[i].importanceMinimum[ii] = random(rnd, randPropablility, maxRandom, this.values[i].importanceMinimum[ii]);
-				this.values[i].nodeMultiplicator[ii] = random(rnd, randPropablility, maxRandom, this.values[i].nodeMultiplicator[ii]);
+				this.values[i].importanceMinimum[ii] = random1(rnd, randPropablility, maxRandom, this.values[i].importanceMinimum[ii]);
+				this.values[i].nodeMultiplicator[ii] = random2(rnd, randPropablility, maxRandom, this.values[i].nodeMultiplicator[ii]);
 			}
-			this.values[i].inputMultiplicators = new double[orig.values[i].inputMultiplicators.length][];
+			this.values[i].inputMultiplicators = new float[orig.values[i].inputMultiplicators.length][];
 			for (int ii = 0; ii < this.values.length; ii++) {
 				this.values[i].inputMultiplicators[ii] = orig.values[i].inputMultiplicators[ii].clone();
 				for (int iii = 0; iii < this.values[i].inputMultiplicators[ii].length; iii++) {
-					this.values[i].inputMultiplicators[ii][iii] = random(rnd, randPropablility, maxRandom, this.values[i].inputMultiplicators[ii][iii]);
+					this.values[i].inputMultiplicators[ii][iii] = random2(rnd, randPropablility, maxRandom, this.values[i].inputMultiplicators[ii][iii]);
 				}
 			}
 		}
 	}
 	
-	private static double random(ThreadLocalRandom rnd, double randPropablility, double maxRandom, double value) {
-		if (rnd.nextDouble() >= randPropablility) {
+	private static float random2(Random rnd, float randPropablility, float maxRandom, float value) {
+		if (rnd.nextFloat() >= randPropablility) {
 			return value;
 		}
-		return Math.min(0d, value + rnd.nextDouble(-maxRandom, maxRandom));
+		float val0 = value + rnd.nextFloat(-maxRandom, maxRandom);
+		if (val0 < 0f) return 0f;
+		if (val0 > 2d) return 2f;
+		return val0;
 	}
 	
-	private static void fillArr(Random rnd, double[] arr) {
+	private static float random1(Random rnd, float randPropablility, float maxRandom, float value) {
+		if (rnd.nextFloat() >= randPropablility) {
+			return value;
+		}
+		float val0 = value + rnd.nextFloat(-maxRandom, maxRandom);
+		if (val0 < 0f) return 0f;
+		if (val0 > 1d) return 1f;
+		return val0;
+	}
+	
+	private static void fillArr(Random rnd, float[] arr) {
 		for (int i = 0; i < arr.length; i++) {
-			arr[i] = rnd.nextDouble();
+			arr[i] = rnd.nextFloat();
 		}
 	}
 	
-	double[] calculate(double[] input) {// the final keyword is used like the const keyword in this method
+	float[] calculate(float[] input) {// the final keyword is used like the const keyword in this method
 		if (this.inputCount != input.length) {
 			throw new IllegalArgumentException();
 		}
-		double[] res      = null;
-		final Nodes[] layers = this.values;
-		final int      layerCount = layers.length;
+		float[]      res        = null;
+		final Nodes[] layers     = this.values;
+		final int     layerCount = layers.length;
 		for (int i = 0; i < layerCount; i++) {
 			Nodes     n         = layers[i];
 			final int nodecount = n.nodeMultiplicator.length;
-			res = new double[nodecount];
-			final double[][] inmuls = n.inputMultiplicators;
+			res = new float[nodecount];
+			final float[][] inmuls = n.inputMultiplicators;
 			for (int ii = 0; ii < nodecount; ii++) {
-				res[ii] = 0d;
-				final double[] curInmul    = inmuls[ii];
+				res[ii] = 0f;
+				final float[] curInmul    = inmuls[ii];
 				final int      curInmulLen = curInmul.length;
 				int            curInOff    = 0;
 				for (final int inBound = SPECS.loopBound(curInmulLen); curInOff < inBound; curInOff += SPEC_LEN) {
-					DoubleVector ivec   = DoubleVector.fromArray(SPECS, input, curInOff);
-					DoubleVector mvec   = DoubleVector.fromArray(SPECS, curInmul, curInOff);
-					DoubleVector finvec = mvec.mul(ivec);
+					FloatVector ivec   = FloatVector.fromArray(SPECS, input, curInOff);
+					FloatVector mvec   = FloatVector.fromArray(SPECS, curInmul, curInOff);
+					FloatVector finvec = mvec.mul(ivec);
 					res[ii] += finvec.reduceLanes(VectorOperators.ADD);
 				}
 				for (; curInOff < curInmulLen; curInOff++) {
 					res[ii] += input[curInOff] * curInmul[curInOff];
 				}
 			}
-			final double[] nodeMuls  = n.nodeMultiplicator;
-			final double[] importMin = n.importanceMinimum;
+			final float[] nodeMuls  = n.nodeMultiplicator;
+			final float[] importMin = n.importanceMinimum;
 			int            resOff    = 0;
 			for (final int resBound = SPECS.loopBound(nodecount); resOff < resBound; resOff += SPEC_LEN) {
-				DoubleVector       rvec   = DoubleVector.fromArray(SPECS, res, resOff);
-				DoubleVector       minvec = DoubleVector.fromArray(SPECS, importMin, resOff);
-				DoubleVector       mulvec = DoubleVector.fromArray(SPECS, nodeMuls, resOff);
-				VectorMask<Double> mask   = rvec.lt(minvec);
-				DoubleVector       finvec = rvec.mul(mulvec, mask);
-				finvec = finvec.blend(0d, mask);
+				FloatVector       rvec   = FloatVector.fromArray(SPECS, res, resOff);
+				FloatVector       minvec = FloatVector.fromArray(SPECS, importMin, resOff);
+				FloatVector       mulvec = FloatVector.fromArray(SPECS, nodeMuls, resOff);
+				VectorMask<Float> mask   = rvec.lt(minvec);
+				FloatVector       finvec = rvec.mul(mulvec, mask);
+				finvec = finvec.blend(0f, mask);
+				VectorMask<Float> mask2   = rvec.compare(VectorOperators.GT, 1f);
+				finvec = finvec.blend(1f, mask2);
 				finvec.intoArray(res, resOff);
 			}
 			for (; resOff < nodecount; resOff++) {
-				double rval = res[resOff];
+				float rval = res[resOff];
 				if (rval < importMin[resOff]) {
-					res[resOff] = 0d;
+					res[resOff] = 0f;
 				} else {
 					res[resOff] = rval * nodeMuls[resOff];
 				}
@@ -132,11 +148,13 @@ public class NeuralNet {
 		return res;
 	}
 	
-	static class Nodes {
+	static class Nodes implements Serializable {
 		
-		double[][] inputMultiplicators;
-		double[]   importanceMinimum;
-		double[]   nodeMultiplicator;
+		private static final long serialVersionUID = 3012965959450914873L;
+		
+		float[][] inputMultiplicators;
+		float[]   importanceMinimum;
+		float[]   nodeMultiplicator;
 		
 	}
 	

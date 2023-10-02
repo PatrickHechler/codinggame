@@ -239,4 +239,9 @@ public class GUIPlayer implements Player.InitilizedPlayer {
 		this.frame.dispose();
 	}
 	
+	@Override
+	public String toString() {
+		return this.name;
+	}
+	
 }

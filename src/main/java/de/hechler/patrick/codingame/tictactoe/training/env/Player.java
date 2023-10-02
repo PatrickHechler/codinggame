@@ -15,5 +15,5 @@ public interface Player {
 		default void finish(@SuppressWarnings("unused") int won) {/**/}
 	
 	}
-	
+
 }
